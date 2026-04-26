@@ -24,3 +24,4 @@ google-cloud-bigquery-storage>=2.24.0  # faster BQ reads (Arrow)
 db-dtypes>=1.2.0        # BQ → pandas type conversions
 pyarrow>=14.0.0         # Parquet I/O
 tqdm>=4.66.0            # progress bars for paginated pulls
+pyreadstat>=1.2.0       # read Stata .dta files (Archigos, CNTS)
