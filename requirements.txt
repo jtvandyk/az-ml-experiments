@@ -25,3 +25,6 @@ db-dtypes>=1.2.0        # BQ → pandas type conversions
 pyarrow>=14.0.0         # Parquet I/O
 tqdm>=4.66.0            # progress bars for paginated pulls
 pyreadstat>=1.2.0       # read Stata .dta files (Archigos, CNTS)
+# --- modelling pipeline ---
+pycountry>=22.3.5       # ISO2/ISO3/numeric country code lookups for crosswalk
+scipy>=1.11.0           # rankdata (LASSO audit), spearmanr (concordance checks)
