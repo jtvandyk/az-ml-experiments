@@ -17,9 +17,9 @@ Raw and processed data live in Azure Data Lake Storage Gen2.
 ## Pipeline overview
 
 ```
- Notebooks 01–13                    Notebooks 14c, 14d
+ Notebooks 01–13                    Notebooks 14c–14g
  Core data ingestion          +     Supplementary label sources
- (13 sources → ADLS parquets)       (RSUI, Freedom House → ADLS parquets)
+ (13 sources → ADLS parquets)       (RSUI, FH, EPR, PTS, ERT → ADLS parquets)
         │                                       │
         └───────────────────┬───────────────────┘
                             ↓
@@ -77,7 +77,7 @@ cleaned country-year aggregate ready for joining in notebook 14.
 | 12 | CNTS | Cross-National Time-Series political instability indicators |
 | 13 | NELDA | National election timing, competitiveness, and irregularity scores |
 
-### Supplementary label sources — notebooks 14c, 14d
+### Supplementary label sources — notebooks 14c–14g
 
 These notebooks pull additional datasets that provide dependent variables not
 covered by notebooks 01–13. They run independently and write parquets to ADLS;
@@ -113,9 +113,67 @@ Freedom House scores appear as predictors in the IMF WP/21/291 unrest model and
 the Harff 2003 genocide model. `fh_status_decline` is a democratic backsliding
 label that complements V-Dem ERT autocratization episodes.
 
+**`14e` — EPR-Core (Ethnic Power Relations)**
+
+Source: Cederman, Wimmer & Min — ETH Zurich ICR group, 1946–2020, global.
+
+Raw data is at the ethnic group × year level; this notebook aggregates to country-year.
+
+| Label / Variable | Description |
+|---|---|
+| `ethnic_exclusion_any` | 1 if any group >10% of population has Powerless or Discriminated status |
+| `n_excluded_groups` | Count of politically excluded groups (any size) |
+| `excluded_pop_share` | Sum of population shares of excluded groups |
+| `n_relevant_groups` | Count of all politically relevant ethnic groups |
+| `max_group_size` | Population share of the largest single group |
+| `dominant_group_flag` | 1 if any group holds Monopoly or Dominant status |
+| `epr_state_collapse` | 1 if EPR codes the country as State Collapse this year |
+
+`ethnic_exclusion_any` is the primary predictor in ethnic war and genocide models
+(Goldstone 2010, Harff 2003, Goldsmith 2013) and a key variable in the ViEWS model.
+
+**`14f` — PTS (Political Terror Scale)**
+
+Source: Gibney et al. — politicalterrorscale.org, 1976–present, ~180 countries.
+
+Government repression coded 1–5 from three independent sources: Amnesty International
+(PTS-A), US State Department (PTS-S), and Human Rights Watch (PTS-H).
+
+| Label / Variable | Description |
+|---|---|
+| `pts_high` | 1 if pts_max ≥ 4 (systematic terror affecting large populations) |
+| `pts_escalation` | 1 if pts_max increased ≥1 point vs. prior year |
+| `pts_a`, `pts_s`, `pts_h` | Raw per-source scores (1–5), usable as predictors |
+| `pts_mean`, `pts_max` | Cross-source summary scores |
+
+`pts_max` is a predictor in the Harff 2003 genocide model. `pts_high` serves as
+a dependent variable for state-terror onset and is a complement to mass killing
+onset labels derived from UCDP.
+
+**`14g` — V-Dem ERT (Episodes of Regime Transformation)**
+
+Source: Edgell, Lührmann, Maerz et al. — V-Dem Institute, 1900–present, ~180 countries.
+
+Notebook 03 pulls V-Dem core democracy indices but not ERT. ERT codes discrete
+autocratization and democratization *episodes* — directional regime trajectories —
+rather than index levels. A country can be autocratizing even when its absolute
+democracy score remains moderate.
+
+| Label / Variable | Description |
+|---|---|
+| `aut_ep` | 1 if country is in an autocratization episode this year |
+| `aut_ep_start_year` | Year the current episode began (NA if not in episode) |
+| `aut_ep_duration` | Years elapsed since episode start |
+| `dem_ep` | 1 if country is in a democratization episode |
+| `reg_trans_type` | Episode type string (gradual/rapid × aut/dem) |
+| `edi`, `edi_change_3y` | Electoral Democracy Index and 3-year trend |
+
+`aut_ep` is the primary dependent variable for democratic backsliding prediction
+and complements `fh_status_decline` from notebook 14d.
+
 ### Notebook 14 — Build feature matrix
 
-Joins all source parquets — core (01–13) and supplementary (14c, 14d) — on a
+Joins all source parquets — core (01–13) and supplementary (14c–14g) — on a
 common ISO3 country key to produce a single country-year panel (~167 countries ×
 25 years). Codes outcome labels, each forward-shifted by one year so that features
 at year *t* predict events at year *t+1*:
@@ -129,10 +187,14 @@ at year *t* predict events at year *t+1*:
 | `regime_change` | Archigos / Polity | Irregular leadership exit or Polity score shift ≥3 points |
 | `unrest_binary` | RSUI (14c) | Annual max RSUI score exceeds country-specific 75th-percentile |
 | `fh_status_decline` | Freedom House (14d) | Freedom House status category worsened vs. prior year |
+| `ethnic_exclusion_any` | EPR (14e) | Any large ethnic group (>10%) coded Powerless or Discriminated |
+| `epr_state_collapse` | EPR (14e) | EPR codes the country as state collapse |
+| `pts_high` | PTS (14f) | Government repression score ≥ 4 across any source |
+| `pts_escalation` | PTS (14f) | PTS max score increased ≥1 point year-on-year |
+| `aut_ep` | V-Dem ERT (14g) | Country is in an active autocratization episode |
 
-As additional supplementary notebooks are added (EPR, PTS, V-Dem ERT), their
-labels are incorporated here by adding the corresponding prefix to `RAW_PREFIXES`
-and extending the label coding block.
+New supplementary sources are integrated by adding the corresponding prefix to
+`RAW_PREFIXES` and extending the label coding block in notebook 14.
 
 ### Notebook 14b — Derived feature engineering
 
