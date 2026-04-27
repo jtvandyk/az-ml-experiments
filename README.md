@@ -1,8 +1,9 @@
 # az-ml-experiments
 
 Predicts national-level political and humanitarian instability events from a
-country-year panel dataset. The pipeline ingests data from fifteen international
-sources, builds a unified feature matrix augmented with derived features, selects
+country-year panel dataset. The pipeline ingests data from eighteen international
+sources (thirteen core + five supplementary), builds a unified feature matrix
+augmented with derived features, selects
 features via LASSO with a mutual-information rescue pass, trains one XGBoost
 classifier per outcome, and produces full SHAP-based explainability at both the
 model level and — during inference — at the level of individual country-year
@@ -175,26 +176,35 @@ and complements `fh_status_decline` from notebook 14d.
 
 Joins all source parquets — core (01–13) and supplementary (14c–14g) — on a
 common ISO3 country key to produce a single country-year panel (~167 countries ×
-25 years). Codes outcome labels, each forward-shifted by one year so that features
-at year *t* predict events at year *t+1*:
+25 years). All five supplementary sources are wired into `RAW_PREFIXES` and joined
+via a shared `_join_iso3_source` helper. Codes twelve binary outcome labels, each
+forward-shifted by one year so that features at year *t* predict events at year *t+1*:
+
+**Core outcomes**
 
 | Label | Source | Coding |
 |---|---|---|
 | `civil_war_onset` | UCDP-GED | First year of state-based conflict after a ≥2-year peace spell |
 | `coup_attempt` | Powell-Thyne | Any coup attempt in the year (success or failure) |
-| `humanitarian_collapse` | FSI / UNHCR | Composite threshold on FSI scores and displacement flows |
-| `mass_protest` | ACLED / CNTS | Large-scale protest exceeding country-specific threshold |
-| `regime_change` | Archigos / Polity | Irregular leadership exit or Polity score shift ≥3 points |
+| `regime_backsliding` | V-Dem | `v2x_libdem` drops ≥0.05, or regime transitions to closed autocracy |
+| `mass_unrest_onset` | ACLED | Annual protest+riot events exceed country 90th-percentile (train years only) |
+| `humanitarian_crisis_onset` | FEWS NET | IPC phase ≤3 → ≥4 in year *t+1* (~39 FEWS countries; NA elsewhere) |
+
+**Supplementary outcomes**
+
+| Label | Source | Coding |
+|---|---|---|
 | `unrest_binary` | RSUI (14c) | Annual max RSUI score exceeds country-specific 75th-percentile |
 | `fh_status_decline` | Freedom House (14d) | Freedom House status category worsened vs. prior year |
 | `ethnic_exclusion_any` | EPR (14e) | Any large ethnic group (>10%) coded Powerless or Discriminated |
-| `epr_state_collapse` | EPR (14e) | EPR codes the country as state collapse |
+| `epr_state_collapse` | EPR (14e) | EPR codes the country as State Collapse |
 | `pts_high` | PTS (14f) | Government repression score ≥ 4 across any source |
 | `pts_escalation` | PTS (14f) | PTS max score increased ≥1 point year-on-year |
 | `aut_ep` | V-Dem ERT (14g) | Country is in an active autocratization episode |
 
-New supplementary sources are integrated by adding the corresponding prefix to
-`RAW_PREFIXES` and extending the label coding block in notebook 14.
+All supplementary labels are pre-computed in their respective source notebooks and
+forward-shifted here. Adding a new source requires only adding its prefix to
+`RAW_PREFIXES` and extending `OUTCOME_COLS`.
 
 ### Notebook 14b — Derived feature engineering
 
