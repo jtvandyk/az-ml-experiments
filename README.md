@@ -1,7 +1,7 @@
 # az-ml-experiments
 
 Predicts national-level political and humanitarian instability events from a
-country-year panel dataset. The pipeline ingests data from nineteen international
+country-year panel dataset. The pipeline ingests data from twenty-six international
 sources, builds a unified feature matrix augmented with PRIO-GRID spatial features
 and derived transformations, selects features via LASSO with a mutual-information
 rescue pass, trains one XGBoost classifier per outcome, and produces full
@@ -100,7 +100,7 @@ If CNTS is unavailable it skips gracefully — it is not required for core outco
 Run notebooks in stage order. Within each stage, notebooks can run in any order.
 
 ```
-01_data_pull/       (run all 19 — each writes to ADLS independently)
+01_data_pull/       (run all 26 — each writes to ADLS independently)
        ↓
 02_feature_engineering/01_prio_grid_spatial_features  (requires 01/09 + 01/04)
 02_feature_engineering/02_build_feature_matrix        (requires all of 01_data_pull)
@@ -130,16 +130,16 @@ az ml job create -f jobs/sweep_outcome.yml \
 
 ```
  01_data_pull/
- Notebooks 01–19
- 19 sources → ADLS parquets
+ Notebooks 01–26
+ 26 sources → ADLS parquets
         │
-        ├── 01 ACLED          09 PRIO-GRID raw        14 RSUI
-        ├── 02 World Bank     10 Archigos              15 Freedom House
-        ├── 03 V-Dem/Polity   11 Africa leadership     16 EPR
-        ├── 04 Conflict lbls  12 CNTS                  17 PTS
-        ├── 05 Fragility/Hum  13 NELDA                 18 V-Dem ERT
-        ├── 06 GDELT                                   19 Cline coup
-        ├── 07 FAO food
+        ├── 01 ACLED          09 PRIO-GRID raw        14 RSUI            20 WBI
+        ├── 02 World Bank     10 Archigos             15 Freedom House   21 ICEWS
+        ├── 03 V-Dem/Polity   11 Africa leadership    16 EPR             22 IMF WEO
+        ├── 04 Conflict lbls  12 CNTS                 17 PTS             23 IDMC
+        ├── 05 Fragility/Hum  13 NELDA                18 V-Dem ERT       24 BTI
+        ├── 06 GDELT                                  19 Cline coup      25 V-Party
+        ├── 07 FAO food                                                  26 ND-GAIN
         └── 08 SIPRI
                │
                ▼
@@ -190,11 +190,21 @@ ready for joining in `02/02_build_feature_matrix`.
 | 17 | PTS | Political Terror Scale — government repression coded 1–5, three sources |
 | 18 | V-Dem ERT | Episodes of Regime Transformation — autocratization episode coding |
 | 19 | Cline Center Coup | Global coup registry 1945–present; extends and supersedes Powell-Thyne |
+| 20 | World Bank WBI | Worldwide Bureaucracy Indicators — public-sector wage bill, employment, pub-priv wage ratio (state-capacity / coup-risk proxies) |
+| 21 | ICEWS | CAMEO-coded political event monthly aggregates (Goldstein mean/std, conflict/coop counts) — second media-derived signal independent of GDELT |
+| 22 | IMF WEO | World Economic Outlook actuals + forward projections (GDP growth, inflation, fiscal balance, debt, current account, unemployment) |
+| 23 | IDMC | Internal displacement flow and stock — conflict and disaster, leading indicator distinct from UNHCR refugee stocks |
+| 24 | BTI | Bertelsmann Transformation Index — bi-annual governance/democracy sub-scores, linearly interpolated to annual with `months_since_bti` |
+| 25 | V-Party | V-Dem populism and anti-establishment scores aggregated from party-year to country-year (governing coalition vs. opposition) |
+| 26 | ND-GAIN | Climate vulnerability and adaptive readiness sub-scores (food, water, health, ecosystem, governance, social) |
 
 Notebooks 14–19 provide supplementary label sources (additional dependent variables
 for backsliding, repression, ethnic exclusion, and coup models) as well as predictors.
-All write to ADLS; `02/02` joins them via `RAW_PREFIXES` using the same mechanism as
-the core sources.
+Notebooks 20–26 are **predictor-only** additions covering state capacity (20),
+independent media-event signal (21), forward-looking macro (22), displacement flows (23),
+governance quality (24), populist party presence (25), and climate-vulnerability ×
+adaptive-capacity (26). All write to ADLS; `02/02` joins them via `RAW_PREFIXES` using
+the same mechanism as the core sources.
 
 ---
 
@@ -222,10 +232,15 @@ Writes to `raw/prio_grid/{RUN_DATE}/priogrid_engineered_features.parquet`.
 
 #### `02_build_feature_matrix`
 
-Joins all 19 source parquets and the PRIO-GRID spatial features (`02/01`) on a
+Joins all source parquets and the PRIO-GRID spatial features (`02/01`) on a
 common `(iso3, year)` key to produce a single country-year panel
 (~167 countries × 25 years ≈ 4,000 rows). Codes twelve binary outcome labels,
 each forward-shifted one year so that features at year *t* predict events at year *t+1*.
+
+> **Note:** notebooks `01/01`–`01/19` are wired into `RAW_PREFIXES` and joined onto
+> the panel today. The newer predictor sources `01/20`–`01/26` are written to ADLS
+> by their pull notebooks and ready for ingestion; add each prefix to `RAW_PREFIXES`
+> and a join cell to enable them as features.
 
 **Core outcomes** (sources 01–13)
 
@@ -259,12 +274,14 @@ toggled in `ENG_CFG`.
 
 | Section | What it adds |
 |---|---|
-| A — Transformations | `log1p`, `sqrt`, first differences (`_diff1`), HP-filter trend/cycle |
-| B — Interactions | Configured pairwise products encoding domain hypotheses |
-| C — Spatial spillover | KNN spatial lag (`_slag`), Local Moran's I, LISA quadrant |
+| A — Transformations | `log1p`, `sqrt`, polynomial expansions, first differences (`_diff1`), HP-filter trend/cycle |
+| B — Interactions | Configured pairwise products (z-scored before multiplication) encoding domain hypotheses |
+| C — Spatial spillover | KNN spatial lag (`_slag`), Local Moran's I (`_local_moran`), LISA quadrant (`_lisa_quad`) |
+| D — Feature audit | Near-zero-variance flags, missingness report, point-biserial correlation against each outcome label |
 
 A **feature catalog CSV** is written alongside the output parquet documenting every
 derived column, its source variables, transformation applied, and missingness rate.
+Section D's audit pre-prunes obviously useless features before LASSO (`03/01`) runs.
 
 ---
 
