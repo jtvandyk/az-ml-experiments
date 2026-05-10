@@ -452,6 +452,18 @@ Active reference docs live in `.claude/`. Long-form literature is in `docs/liter
 | [`docs/literature/`](docs/literature/) | Snowball literature review, instability-modeling synthesis, model-types reference |
 | [`docs/refactor-backlog.md`](docs/refactor-backlog.md) | Deferred refactors (currently on sibling branch `claude/refactor-backlog-followups`) |
 
+### Claude Code skills (`.claude/skills/`)
+
+Project-level skills that capture the recurring workflows in this repo. Invoke from Claude Code with `/<skill-name>` or by describing the task.
+
+| Skill | What it does |
+|---|---|
+| [`edit-notebook`](.claude/skills/edit-notebook/SKILL.md) | Apply structured cell-ID-keyed edits to a Jupyter notebook via a small Python helper. Use for FE notebooks too large for Edit, or for atomic multi-cell edits |
+| [`add-data-source`](.claude/skills/add-data-source/SKILL.md) | Scaffold a new `01_data_pull/NN_pull_<source>.ipynb` from the canonical template (mirrors notebook 26 conventions; ships the `name_to_iso3` fallback that BTI was missing). Walks through wiring into `02/02` |
+| [`review-fe-changes`](.claude/skills/review-fe-changes/SKILL.md) | Static-analysis checklist for `02_build_feature_matrix.ipynb` and `03_engineer_derived_features.ipynb`. Catches HP-filter row misalignment, merge-inside-loop, parquet-as-CSV, ENG_CFG-vs-panel column drift, OUTCOME_COLS / ENG_CFG outcome-list mismatch |
+
+The helper scripts under each skill's `scripts/` directory are pure stdlib Python and runnable directly (e.g. `python3 .claude/skills/review-fe-changes/scripts/check_fe.py --all`).
+
 ---
 
 ### ADLS path conventions
