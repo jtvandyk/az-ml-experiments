@@ -440,12 +440,17 @@ source .env
 On AML compute, authentication uses Managed Identity via `DefaultAzureCredential` — no
 credentials need to be set manually beyond the environment variables listed in step 3.
 
-### Reference documents (`.claude/`)
+### Reference documents
+
+Active reference docs live in `.claude/`. Long-form literature is in `docs/literature/`. Superseded planning docs are in `.claude/archive/` (preserved for the original phrasing, not for current decisions).
 
 | Document | Purpose |
 |---|---|
-| [`metric-interpretation-guide.md`](.claude/metric-interpretation-guide.md) | How to read AUPRC, Brier score, calibration, and P@K; overfitting diagnosis; threshold selection by outcome; iterative sweep workflow |
-| [`azure-ml-usage-plan.md`](.claude/azure-ml-usage-plan.md) | VM sizing recommendations, HyperDrive sweep run estimates, and budget breakdown |
+| [`.claude/project-reference.md`](.claude/project-reference.md) | Pipeline overview, architecture decisions, compute resources, runtime estimates, budget, deferred follow-ups |
+| [`.claude/data-and-predictors.md`](.claude/data-and-predictors.md) | Implemented data sources (notebooks 01–26), the 12 outcome labels and their definitions, IV taxonomy by domain, label-construction methods |
+| [`.claude/metric-interpretation-guide.md`](.claude/metric-interpretation-guide.md) | How to read AUPRC, Brier score, calibration, and P@K; overfitting diagnosis; threshold selection by outcome; iterative sweep workflow |
+| [`docs/literature/`](docs/literature/) | Snowball literature review, instability-modeling synthesis, model-types reference |
+| [`docs/refactor-backlog.md`](docs/refactor-backlog.md) | Deferred refactors (currently on sibling branch `claude/refactor-backlog-followups`) |
 
 ---
 
