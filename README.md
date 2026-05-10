@@ -475,6 +475,25 @@ Project-level skills that capture the recurring workflows in this repo. Invoke f
 
 The helper scripts under each skill's `scripts/` directory are pure stdlib Python (or stdlib + `pandas`/`mlflow` where unavoidable) and runnable directly (e.g. `python3 .claude/skills/review-fe-changes/scripts/check_fe.py --all`).
 
+**Imported (third-party reference content):**
+
+| Skill | What it does |
+|---|---|
+| [`pytorch-patterns`](.claude/skills/pytorch-patterns/SKILL.md) | Idiomatic PyTorch patterns — device-agnostic code, reproducibility, training loops, AMP, `torch.compile`, checkpointing. **Forward-looking for this repo** — not used yet (current pipeline is XGBoost-on-tabular, no GPU); kept for the LSTM/neural-baseline extensions called out in `archive/meta-plan-instability-classifiers.md` Phase IV. |
+
+### Project-level subagents (`.claude/agents/`)
+
+Project-pinned subagents available via the Agent tool. Each is a markdown file with `name`, `description`, `tools`, and `model` frontmatter. Claude Code surfaces these to the model as `subagent_type: <name>` options.
+
+| Agent | When to invoke | Fit for this repo |
+|---|---|---|
+| [`data-scientist`](.claude/agents/data-scientist.md) | Exploratory analysis, statistical modeling, hypothesis testing, A/B test design, translating findings into recommendations | Direct fit — this is the work the project is built around |
+| [`ml-engineer`](.claude/agents/ml-engineer.md) | Building ML pipelines, training/serving infrastructure, drift monitoring, automated retraining, MLflow tracking, hyperparameter optimization | Direct fit — XGBoost-per-outcome + HyperDrive sweeps + MLflow + drift detection map straight onto its scope |
+| [`python-pro`](.claude/agents/python-pro.md) | Type-safe production Python — APIs, async patterns, type hints, packaging, testing, profiling | General fit — useful for any non-notebook code (`src/train/`, helpers, future services) |
+| [`nlp-engineer`](.claude/agents/nlp-engineer.md) | Text preprocessing, NER, classification, machine translation, multilingual support, transformer fine-tuning | **Forward-looking** — current pipeline is tabular only; relevant if/when GDELT-text→LLM-narrative work or multilingual label extraction is added |
+
+To invoke a subagent from Claude Code: describe the task and the harness will pick the matching `subagent_type`, or pass it explicitly. None of these are auto-triggered without a relevant task.
+
 ---
 
 ### ADLS path conventions
