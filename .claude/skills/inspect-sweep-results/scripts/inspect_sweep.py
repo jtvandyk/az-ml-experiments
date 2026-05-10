@@ -64,15 +64,31 @@ def param_col(df, name):
     return None
 
 
+# Metrics where lower is better. For all others, max is the "best" value.
+_LOWER_IS_BETTER = {"val_brier", "test_brier", "train_brier"}
+
+# Metrics that aren't an optimisation target — show max as a saturation indicator.
+_NOT_AN_OBJECTIVE = {"best_iteration"}
+
+
 def summarise_metric(df, name):
+    """Return min / max / median / std plus a `best` value picked by metric direction.
+
+    `best` = max for AUPRC-like, min for Brier-like, max for best_iteration
+    (saturation indicator, not a quality measure).
+    """
+    empty = {"best": None, "min": None, "max": None, "median": None, "std": None}
     s = metric_col(df, name).dropna()
     try:
         s = s.astype(float)
     except (TypeError, ValueError):
-        return {"best": None, "median": None, "std": None}
+        return empty
     if s.empty:
-        return {"best": None, "median": None, "std": None}
-    return {"best": float(s.max()), "median": float(s.median()), "std": float(s.std())}
+        return empty
+    mn, mx = float(s.min()), float(s.max())
+    best = mn if name in _LOWER_IS_BETTER else mx
+    return {"best": best, "min": mn, "max": mx,
+            "median": float(s.median()), "std": float(s.std())}
 
 
 def summarise_outcome(df_all, outcome, *, top_n, ceiling):
@@ -99,6 +115,7 @@ def summarise_outcome(df_all, outcome, *, top_n, ceiling):
             "val_auprc":       float(row.get("_val_auprc", float("nan"))),
             "test_auprc":      float(metric_col(df_sorted, "test_auprc").get(row.name, float("nan"))),
             "train_auprc":     float(metric_col(df_sorted, "train_auprc").get(row.name, float("nan"))),
+            "val_brier":       float(metric_col(df_sorted, "val_brier").get(row.name, float("nan"))),
             "best_iteration":  metric_col(df_sorted, "best_iteration").get(row.name, None),
             "params":          {p: row.get(f"params.{p}", row.get(p)) for p in TUNABLES
                                 if f"params.{p}" in df_sorted.columns or p in df_sorted.columns},
@@ -117,8 +134,11 @@ def summarise_outcome(df_all, outcome, *, top_n, ceiling):
             label = "within noise" if abs(gap) <= 0.05 else ("mild" if abs(gap) <= 0.10 else "STRUCTURAL SHIFT")
             diagnostics.append(("val→test gap (best)", f"{fmt(v)} → {fmt(t)} (Δ={gap:+.3f}) — {label}"))
 
-        # 2. Brier vs. prevalence baseline.
-        vb = best.get("val_brier") or metrics["val_brier"]["best"]
+        # 2. Brier vs. prevalence baseline (Brier from the best-by-val-AUPRC trial,
+        # not the min Brier across the sweep — those can be different trials).
+        vb = best.get("val_brier")
+        if vb is not None and vb != vb:  # NaN
+            vb = None
         prev = PREVALENCE.get(outcome)
         if vb is not None and prev is not None:
             baseline = prev * (1 - prev)
@@ -184,13 +204,17 @@ def render_markdown(result: dict) -> str:
 
     lines = [f"## {result['outcome']} ({result['n_runs']} runs)\n"]
 
-    # Per-metric table.
+    # Per-metric table. `best` is direction-aware (max for AUPRC-like, min for Brier-like).
+    # `best_iteration` is not an objective — its "best" column is the max iteration any trial
+    # reached, which is informative as a saturation indicator (compare to --n-estimators-ceiling).
     lines.append("|              | best   | median | std    |")
     lines.append("|--------------|--------|--------|--------|")
     for m in ("val_auprc", "test_auprc", "train_auprc", "val_brier", "val_precision_at_20", "best_iteration"):
         s = result["metrics"][m]
         spec = ".4f" if "auprc" in m or "brier" in m or "precision" in m else ".0f"
-        lines.append(f"| {m:<12s} | {fmt(s['best'], spec)} | {fmt(s['median'], spec)} | {fmt(s['std'], spec)} |")
+        label = m if m != "best_iteration" else "best_iter*"
+        lines.append(f"| {label:<12s} | {fmt(s['best'], spec)} | {fmt(s['median'], spec)} | {fmt(s['std'], spec)} |")
+    lines.append("\n_*best_iter \"best\" = max iteration reached (saturation indicator, not an objective)._")
 
     # Top-N trials.
     lines.append(f"\n### Top {len(result['top_trials'])} trials by val_auprc\n")

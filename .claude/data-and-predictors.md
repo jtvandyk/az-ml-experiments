@@ -58,6 +58,11 @@ Every source below is pulled by a numbered notebook in `notebooks/01_data_pull/`
 
 **Pipeline contract:** every source-pull notebook must write a parquet keyed by `(iso3, year)` (or be aggregated into one). The hardened `_join_iso3_source` helper in `02/02` will derive `iso3` from `country_name`/`country` via `name_to_iso3` if missing, but `year` is required. Use `feature_prefix=` if column names will collide with another source (the WEO/WDI overlap is the canonical case).
 
+**Vintage / look-ahead caveat (WEO and any forecast source).** Sources that publish forward projections (notably IMF WEO, source 22) carry two leakage risks:
+
+1. **Multi-year-ahead projections as features.** With a 1-year forward-shifted label, only the **current-year nowcast** and **historical actuals** were knowable to a real-time predictor. Projections for `t+1, t+2, …` are inadmissible as features for predicting events at `t+1`.
+2. **Vintage drift.** Each WEO release **revises** prior-year actuals. Training on the latest vintage and claiming to predict from year *t* implicitly uses revisions that didn't exist at *t*. For honest backtesting, pin the vintage to what was current at *t* (e.g. October-*t* release for predictions issued in *t*). The current pull captures one vintage per `RUN_DATE`; multi-vintage joins are a deferred follow-up tracked in `docs/refactor-backlog.md`.
+
 ---
 
 ## 2. Dependent variables (12 outcomes)

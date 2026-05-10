@@ -9,6 +9,8 @@ Exit code:
     1  — at least one ERROR finding
     2  — argument / load error
 """
+from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path

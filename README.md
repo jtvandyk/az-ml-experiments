@@ -485,6 +485,8 @@ The helper scripts under each skill's `scripts/` directory are pure stdlib Pytho
 
 Project-pinned subagents available via the Agent tool. Each is a markdown file with `name`, `description`, `tools`, and `model` frontmatter. Claude Code surfaces these to the model as `subagent_type: <name>` options.
 
+> Project-level subagents are a relatively new Claude Code feature. If your CLI doesn't pick up `.claude/agents/`, run `claude --version` and update if needed — older versions silently ignore the directory.
+
 | Agent | When to invoke | Fit for this repo |
 |---|---|---|
 | [`data-scientist`](.claude/agents/data-scientist.md) | Exploratory analysis, statistical modeling, hypothesis testing, A/B test design, translating findings into recommendations | Direct fit — this is the work the project is built around |
