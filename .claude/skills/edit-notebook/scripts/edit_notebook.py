@@ -11,13 +11,16 @@ Edits spec (JSON):
     {"cell_id": "cell-3", "new_source": "..."},
     {"cell_id": "abcd1234", "old_substring": "foo", "new_substring": "bar"},
     {"cell_id": "ef005",    "old_substring": "X",   "new_substring": "Y", "optional": true},
+    {"cell_id": "1234abcd", "old_substring": "x",   "new_substring": "y", "replace_all": true},
     {"cell_id": "deadbeef", "append": "\\n# trailing comment"}
   ]
 }
 
 Each edit specifies exactly ONE of:
 - new_source       — replace cell source verbatim
-- old_substring + new_substring — exact substring replace; errors unless `optional: true`
+- old_substring + new_substring — exact substring replace; errors unless `optional: true`.
+                                  Errors if `old_substring` matches >1 site unless
+                                  `replace_all: true`.
 - append           — append text to existing source
 
 Errors if a cell_id is not found (fail loud — do not silently create cells).
@@ -54,16 +57,23 @@ def apply_edit(cell: dict, edit: dict) -> str:
     if "old_substring" in edit:
         if "new_substring" not in edit:
             raise ValueError(f"edit for {cid}: old_substring requires new_substring")
-        if edit["old_substring"] not in src:
+        count = src.count(edit["old_substring"])
+        if count == 0:
             if edit.get("optional", False):
                 return f"  {cid}: old_substring not found (optional, skipped)"
             raise ValueError(
                 f"edit for {cid}: old_substring not found verbatim — "
                 f"use --inspect to confirm cell content first"
             )
+        if count > 1 and not edit.get("replace_all", False):
+            raise ValueError(
+                f"edit for {cid}: old_substring matches {count} sites — "
+                f"make it more specific, or set 'replace_all': true"
+            )
         new_src = src.replace(edit["old_substring"], edit["new_substring"])
         cell["source"] = new_src.splitlines(keepends=True)
-        return f"  {cid}: substring replaced ({len(edit['old_substring'])} → {len(edit['new_substring'])} chars)"
+        suffix = f" ×{count}" if count > 1 else ""
+        return f"  {cid}: substring replaced{suffix} ({len(edit['old_substring'])} → {len(edit['new_substring'])} chars)"
 
     # append
     appended = src.rstrip("\n") + "\n" + edit["append"]

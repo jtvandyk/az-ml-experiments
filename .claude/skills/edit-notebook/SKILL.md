@@ -48,7 +48,7 @@ Pattern for applying edits to Jupyter notebooks via JSON manipulation. Faster an
 
    Each edit must specify `cell_id` and exactly one of:
    - `new_source` — replace the entire cell source
-   - `old_substring` + `new_substring` — verbatim substring replacement (errors if not found, unless `optional: true`)
+   - `old_substring` + `new_substring` — verbatim substring replacement. Errors if not found (unless `optional: true`) **or** if the substring matches more than one site (unless `replace_all: true`). Make `old_substring` more specific to disambiguate.
    - `append` — append text to the existing source (with a leading newline if needed)
 
 3. **Apply and verify.** The helper writes the notebook back with stable indent (`json.dumps(..., indent=1, ensure_ascii=False)` to match the project convention). Confirm with `git diff -- <notebook.ipynb>`.
