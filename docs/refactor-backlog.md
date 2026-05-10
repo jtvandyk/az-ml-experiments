@@ -146,17 +146,4 @@ implementation row-for-row on a fixed input.
 - Each entry: **Where**, **Problem**, **Why deferred**, **Done when**.
 - Delete the entry in the same PR that resolves it; don't strike it out.
 
-## 4. Multi-vintage WEO joins for honest backtesting
-
-**Priority:** medium
-
-**Problem.**
-notebooks/01_data_pull/22_pull_weo_forecasts.ipynb captures one WEO vintage per RUN_DATE. WEO releases are vintage-stamped (April + October), and each vintage revises prior-year actuals. Training on the latest vintage and claiming to predict from year t implicitly uses revisions that didn't exist at t — a subtle leakage path. Multi-year-ahead projections in a single vintage are also inadmissible as features under the 1-year forward-shifted label (only current-year nowcast + actuals are knowable in real time). See data-and-predictors.md §1 'Vintage / look-ahead caveat' and the notebook's 'Look-ahead / leakage risk' section.
-
-**Proposed fix.**
-Store one parquet per WEO vintage at raw/weo/{VINTAGE}/weo_panel.parquet (e.g. raw/weo/202404/, raw/weo/202410/). When building the panel for training year t, join the October-(t-1) or April-t vintage, and clip to columns where year ≤ t (drop multi-year projections). Optionally retain weo_<col>_t1_proj for the current-year nowcast as an explicit named feature. Backfill historical vintages from the IMF WEO archive (https://www.imf.org/en/Publications/WEO/weo-database).
-
-**Blast radius.**
-Touches 22_pull_weo_forecasts.ipynb (vintage-aware path), 02/02 build_feature_matrix.ipynb (vintage-keyed join logic for WEO), and the training pipeline (label year passed into the join). Could regress non-WEO joins if the vintage-keyed pattern leaks into other prefixes — keep it WEO-specific. Verify by spot-checking that gdp_growth_pct for (e.g.) USA, year=2018 differs between the 201810 vintage and the 202410 vintage, and that the panel for label-year 2019 uses the 201810 value.
-
 ---

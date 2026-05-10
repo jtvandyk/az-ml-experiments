@@ -58,10 +58,11 @@ Every source below is pulled by a numbered notebook in `notebooks/01_data_pull/`
 
 **Pipeline contract:** every source-pull notebook must write a parquet keyed by `(iso3, year)` (or be aggregated into one). The hardened `_join_iso3_source` helper in `02/02` will derive `iso3` from `country_name`/`country` via `name_to_iso3` if missing, but `year` is required. Use `feature_prefix=` if column names will collide with another source (the WEO/WDI overlap is the canonical case).
 
-**Vintage / look-ahead caveat (WEO and any forecast source).** Sources that publish forward projections (notably IMF WEO, source 22) carry two leakage risks:
+**Vintage / look-ahead policy (WEO).** IMF WEO (source 22) is handled with full vintage-keyed joins to prevent look-ahead leakage:
 
-1. **Multi-year-ahead projections as features.** With a 1-year forward-shifted label, only the **current-year nowcast** and **historical actuals** were knowable to a real-time predictor. Projections for `t+1, t+2, …` are inadmissible as features for predicting events at `t+1`.
-2. **Vintage drift.** Each WEO release **revises** prior-year actuals. Training on the latest vintage and claiming to predict from year *t* implicitly uses revisions that didn't exist at *t*. For honest backtesting, pin the vintage to what was current at *t* (e.g. October-*t* release for predictions issued in *t*). The current pull captures one vintage per `RUN_DATE`; multi-vintage joins are a deferred follow-up tracked in `docs/refactor-backlog.md`.
+- **Storage:** `22_pull_weo_forecasts.ipynb` writes to `raw/weo/vintage={YYYY}-{MM}/weo_panel.parquet` (e.g. `vintage=2025-10`). The vintage is inferred from the pull date: October release if `month >= 10`, April release if `month >= 4`, otherwise previous October. Each row carries a `weo_vintage` column and an `is_projection` flag (`1` if `year >= VINTAGE_YEAR`).
+- **Join:** `_join_weo_vintage_keyed()` in `02/02` performs a time-valid join: for each panel year *t*, it selects the latest vintage where `vintage_year ≤ t` and joins only the `year == t` row from that vintage. No future projections (`year > t`) ever enter the panel. Years that predate all stored vintages receive NaN — the diagnostic log names which vintage was used per year.
+- **Backtesting integrity:** to eliminate vintage-drift bias for historical years, backfill old WEO vintage files from the IMF WEO archive (`https://www.imf.org/en/Publications/WEO/weo-database`) and re-run notebook 22 for each historical vintage. Until backfill is done, all panel years will use the earliest available vintage, which is better than the latest (less look-ahead).
 
 ---
 
