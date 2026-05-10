@@ -9,6 +9,7 @@ Usage:
 """
 import argparse
 import json
+import math
 import sys
 
 # Approximate prevalence baselines from .claude/data-and-predictors.md §2.
@@ -129,7 +130,7 @@ def summarise_outcome(df_all, outcome, *, top_n, ceiling):
         v, t, tr, bi = best["val_auprc"], best["test_auprc"], best["train_auprc"], best["best_iteration"]
 
         # 1. val→test gap.
-        if not (v != v or t != t):
+        if not (math.isnan(v) or math.isnan(t)):
             gap = v - t
             label = "within noise" if abs(gap) <= 0.05 else ("mild" if abs(gap) <= 0.10 else "STRUCTURAL SHIFT")
             diagnostics.append(("val→test gap (best)", f"{fmt(v)} → {fmt(t)} (Δ={gap:+.3f}) — {label}"))
@@ -137,7 +138,7 @@ def summarise_outcome(df_all, outcome, *, top_n, ceiling):
         # 2. Brier vs. prevalence baseline (Brier from the best-by-val-AUPRC trial,
         # not the min Brier across the sweep — those can be different trials).
         vb = best.get("val_brier")
-        if vb is not None and vb != vb:  # NaN
+        if vb is not None and math.isnan(vb):
             vb = None
         prev = PREVALENCE.get(outcome)
         if vb is not None and prev is not None:
@@ -161,7 +162,7 @@ def summarise_outcome(df_all, outcome, *, top_n, ceiling):
                 pass
 
         # 4. train→val gap.
-        if not (tr != tr or v != v):
+        if not (math.isnan(tr) or math.isnan(v)):
             gap = tr - v
             label = ("minimal overfit" if gap <= 0.10 else
                      "mild overfit" if gap <= 0.20 else

@@ -77,6 +77,10 @@ These need eyeballs:
 5. **Are new ENG_CFG column references present in the panel?** The runtime warning logs missing columns at load; check the notebook's first execution log for "ENG_CFG references N column(s) that are not in the feature matrix".
 6. **For new sources: is `feature_prefix=` used when collisions are possible?** Cross-check the new source's column names against `panel.columns` after the prior joins.
 
+## Known limitations
+
+The merge-inside-loop check in `03_engineer_derived_features.ipynb` uses indentation-based heuristics to detect the loop boundary. It will miss merges in doubly-nested loops or loops using only spaces at one level of indentation. If the script reports clean but `02/03` runs slowly, inspect the Section D audit cell manually for any `df.merge()` inside a `for` loop.
+
 ## Helper script
 
 - `scripts/check_fe.py` — runs the static checks listed above.

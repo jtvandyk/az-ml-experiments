@@ -76,7 +76,8 @@ def main() -> int:
     for ph in PLACEHOLDERS:
         text = text.replace("{{" + ph + "}}", subs[ph])
 
-    # Sanity: check no placeholders survived.
+    # Sanity: check no placeholders survived. Pattern matches {{ALL_CAPS}} only,
+    # so it won't collide with Python format strings ({}) or lowercase template prose.
     leftover = re.findall(r"\{\{[A-Z_]+\}\}", text)
     if leftover:
         print(f"error: unsubstituted placeholders remain: {sorted(set(leftover))}", file=sys.stderr)
